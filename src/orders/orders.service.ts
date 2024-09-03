@@ -1,6 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PrismaClient } from '@prisma/client';
+import { RpcException } from '@nestjs/microservices';
+import { ChangeOrderStatusDto, OrderPaginationDto } from './dto';
 
 @Injectable()
 export class OrdersService extends PrismaClient implements OnModuleInit {
@@ -12,17 +14,73 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     this.logger.log(`Database connected`)
   } 
   create(createOrderDto: CreateOrderDto) {
-    return 'This action adds a new order from Microservice';
+    return this.order.create({
+      data: createOrderDto
+    })
+
   }
 
-  findAll() {
-    return `This action returns all orders`;
+  async findAll(orderPaginationDto: OrderPaginationDto) {
+
+    const { status, limit, page } = orderPaginationDto;
+    const totalPages = await this.order.count({
+      where: {
+        status
+      }
+    })
+    const currentPage = page
+    const perPage = orderPaginationDto.limit;
+
+    return {
+      data: await this.order.findMany({
+        skip: ( currentPage - 1 ) * perPage,
+        take: perPage,
+        where: {
+          status
+        }
+      }),
+      meta: {
+        total: totalPages,
+        page: currentPage,
+        lastPage: Math.ceil( totalPages / perPage)
+      },
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} order`;
+  async findOne(id: string) {
+
+
+    const order = await this.order.findFirst({
+      where: {
+        id
+      }
+    })
+
+    if( !order) {
+      throw new RpcException({
+        status: HttpStatus.NOT_FOUND,
+        message: `Order with id ${id} not found`
+      })
+    }
+
+    return order
   }
-  remove(id: number) {
-    return `This action removes a #${id} order`;
+  async changeOrderStatus(changeOrderStatusDto: ChangeOrderStatusDto) {
+    const order = await this.findOne(changeOrderStatusDto.id)
+
+    if( order.status === changeOrderStatusDto.status) {
+      return order;
+    }
+
+
+    return this.order.update({
+      where: {
+        id: changeOrderStatusDto.id
+      },
+      data: {
+        status: changeOrderStatusDto.status
+      }
+    })
+
   }
 }
