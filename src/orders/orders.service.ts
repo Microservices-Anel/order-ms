@@ -14,9 +14,14 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     this.logger.log(`Database connected`)
   } 
   create(createOrderDto: CreateOrderDto) {
-    return this.order.create({
-      data: createOrderDto
-    })
+
+    return { 
+      service: 'orders microservice',
+      createOrderDto
+    }
+    // return this.order.create({
+    //   data: createOrderDto
+    // })
 
   }
 
