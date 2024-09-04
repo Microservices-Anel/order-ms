@@ -11,7 +11,7 @@ export class OrderItemDto {
 
     @IsNumber()
     @IsPositive()
-    quantity: number;
+    qantity: number;
 
 
     @IsNumber()
